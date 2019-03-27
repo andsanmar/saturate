@@ -1,0 +1,13 @@
+[package]
+name = "sat_solver"
+version = "0.1.0"
+authors = ["Andrés Sánchez <andres.sanchez@imdea.org>"]
+edition = "2019"
+
+[dependencies]
+
+[build-dependencies]
+
+[[bin]]
+name = "sat_solver"
+path = "src/parser.rs"
