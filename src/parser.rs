@@ -7,26 +7,24 @@ mod lib;
 mod parser{
     use crate::lib::structures::Formula;
     
-    pub fn get_formulas(input : String) -> (u8, usize, Vec<Formula>) {
-        let mut forms = Vec::<String>::new();
-        let elems : std::str::SplitWhitespace = input.split_whitespace();
-        for elem in elems {
-            forms.push(elem.to_string());
-        }
+    pub fn get_formulas(input : String) -> Vec<Formula> {
+        let forms : Vec<String> = input.split_whitespace().map(|x| x.to_string()).collect();
         let (defs, all_formulas) = forms.split_at(4);
         let n_vars : u8 = defs.get(2).unwrap().to_string().parse().unwrap();
         let n_formulas : usize = defs.get(3).unwrap().to_string().parse().unwrap();
-        let mut formulas = Vec::<Formula>::new();
-        for i in all_formulas.split(|s| s == "0"){
-            formulas.push(create_formula(i.to_vec()));
-        }
+        let formulas : Vec<Formula> = all_formulas.split(|s| s == "0").
+            map(|i| create_formula(n_vars, i.to_vec())).collect(); // TODO all at the same time , not creating a vector
         // The last element of the vector must be empty
         assert_eq!(n_formulas + 1, formulas.len(), "Number of formulas and size don't match!");
-        (n_vars, n_formulas, formulas)
+        formulas
     }
 
-    fn create_formula(input : Vec<String>) -> Formula {
-        Formula(input)
+    fn create_formula(n_vars : u8, input : Vec<String>) -> Formula {
+        for i in input.clone() {
+            let n : i8 = i.parse().unwrap();
+            assert!(n.abs() as u8 <= n_vars,"More variables than specified!");
+        }
+        Formula(input.iter().map(|x| x.parse().unwrap()).collect())
     }
 }
 
@@ -41,10 +39,7 @@ fn main() {
     // let formula = get_formula(open(&Path::new(&file)).expect("Opening file failed"));
     let mut buffer : String = String::new();
     io::stdin().read_to_string(&mut buffer).unwrap();
-    let form = parser::get_formulas(buffer);
-    println!("{}", form.0);
-    println!("{}", form.1);
-    for i in form.2 {
+    for i in parser::get_formulas(buffer) {
         for j in i.0 {
             print!("{} ", j);
         }

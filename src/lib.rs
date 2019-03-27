@@ -7,5 +7,5 @@
 // }
 
 pub mod structures{
-    pub struct Formula(pub Vec<String>);
+    pub struct Formula(pub Vec<i8>);
 }
