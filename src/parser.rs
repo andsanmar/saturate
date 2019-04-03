@@ -4,12 +4,12 @@ use std::io::{self, Read};
 
 mod lib;
 
-mod parser{
-    use crate::lib::structures::Formula;
+pub mod parser{
+    use crate::lib::structures::*;
     
-    pub fn get_formulas(input : String) -> Vec<Formula> {
+    pub fn get_formulas(input : String) -> CNF {
         let forms : Vec<String> = input.split_whitespace().map(|x| x.to_string()).collect();
-        let (defs, all_formulas) = forms.split_at(4);
+        let (defs, all_formulas) = forms.split_at(4); // Insert comments to ignore
         let n_vars : u8 = defs.get(2).unwrap().to_string().parse().unwrap();
         let n_formulas : usize = defs.get(3).unwrap().to_string().parse().unwrap();
         let formulas : Vec<Formula> = all_formulas.split(|s| s == "0").
