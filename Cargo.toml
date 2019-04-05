@@ -10,4 +10,4 @@ edition = "2018"
 
 [[bin]]
 name = "sat_solver"
-path = "src/parser.rs"
+path = "src/main.rs"
