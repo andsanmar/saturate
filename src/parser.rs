@@ -2,24 +2,44 @@ use std::io::{self, Read};
 
 use crate::structures::*;
 
-pub fn get_formulas(input : String) -> CNF {
-    let forms : Vec<String> = input.split_whitespace().map(|x| x.to_string()).collect();
-    let (defs, all_formulas) = forms.split_at(4); // Insert comments to ignore
-    let n_vars : u8 = defs.get(2).unwrap().to_string().parse().unwrap();
-    let n_formulas : usize = defs.get(3).unwrap().to_string().parse().unwrap();
-    let formulas : Vec<Formula> = all_formulas.split(|s| s == "0").
-        map(|i| create_formula(n_vars, i.to_vec())).collect(); // TODO all at the same time , not creating a vector
-    // The last element of the vector must be empty
-    assert_eq!(n_formulas + 1, formulas.len(), "Number of formulas and size don't match!");
-    (formulas, n_vars)
+type CnfDef = (u8, usize);
+
+enum ParsedLine {
+    F(Formula),
+    Empty,
 }
 
-fn create_formula(n_vars : u8, input : Vec<String>) -> Formula {
+static mut N_VARS : u8 = 0;
+static mut _N_FORMULAS : usize = 0;
+
+pub fn get_formulas(input : String) -> CNF {
+    // TODO: Another way of splitting newlines
+    let formulas : Vec<Formula> = input.split("\n").map(|x| parse_line(x.to_string())).collect::<Vec<ParsedLine>>().iter().fold(Vec::new(), |mut v, x| match x {
+        ParsedLine::F(f) => {v.push(f.to_vec()); v},
+        _ => v,
+    });
+    // The last element of the vector must be empty
+    //assert_eq!(N_FORMULAS + 1, formulas.len(), "Number of formulas and size don't match!");
+    unsafe{(formulas, N_VARS)}
+}
+
+fn parse_line(input_string : String) -> ParsedLine {
+    let input : Vec<String> = input_string.split_whitespace().map(|x| x.to_string()).collect();
+    if input.first() == Some(&"c".to_string()) || input.first() == Some(&"%".to_string()) || input.first() == Some(&"0".to_string()) { return ParsedLine::Empty }
+    if input.first() == Some(&"p".to_string()) {
+        unsafe{ //TODO: evict data races
+            N_VARS = input.get(2).unwrap().to_string().parse().unwrap();
+            _N_FORMULAS = input.get(3).unwrap().to_string().parse().unwrap();}
+        return ParsedLine::Empty } // TODO: Parse the cnf def
+    let formula = match input.split_last() {
+        Some((l, f)) => { assert_eq!(l.parse::<u8>().unwrap(), 0, "Bad definition of line"); f},
+        None => &input,
+    };
     for i in &input {
         let n : i8 = i.parse().unwrap();
-        assert!(n.abs() as u8 <= n_vars,"More variables than specified!");
+        unsafe{assert!(n.abs() as u8 <= N_VARS,"More variables than specified!");}
     }
-    input.iter().map(|x| x.parse().unwrap()).collect()
+    ParsedLine::F(formula.iter().map(|x| x.parse().unwrap()).collect())
 }
 
 
