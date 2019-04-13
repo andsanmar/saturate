@@ -2,19 +2,19 @@ use std::io::{self, Read};
 
 use crate::structures::*;
 
-type CnfDef = (u8, usize);
+// type CnfDef = (u8, usize);
 
 enum ParsedLine {
-    F(Formula),
+    F(Clause),
     Empty,
 }
 
-static mut N_VARS : u8 = 0;
+static mut N_VARS : usize = 0;
 static mut _N_FORMULAS : usize = 0;
 
 pub fn get_formulas(input : String) -> CNF {
     // TODO: Another way of splitting newlines
-    let formulas : Vec<Formula> = input.split("\n").map(|x| parse_line(x.to_string())).collect::<Vec<ParsedLine>>().iter().fold(Vec::new(), |mut v, x| match x {
+    let formulas : Vec<Clause> = input.split("\n").map(|x| parse_line(x.to_string())).collect::<Vec<ParsedLine>>().iter().fold(Vec::new(), |mut v, x| match x {
         ParsedLine::F(f) => {v.push(f.to_vec()); v},
         _ => v,
     });
@@ -25,7 +25,7 @@ pub fn get_formulas(input : String) -> CNF {
 
 fn parse_line(input_string : String) -> ParsedLine {
     let input : Vec<String> = input_string.split_whitespace().map(|x| x.to_string()).collect();
-    if input.first() == Some(&"c".to_string()) || input.first() == Some(&"%".to_string()) || input.first() == Some(&"0".to_string()) { return ParsedLine::Empty }
+    if input.first() == Some(&"c".to_string()) || input.first() == Some(&"%".to_string()) { return ParsedLine::Empty }
     if input.first() == Some(&"p".to_string()) {
         unsafe{ //TODO: evict data races
             N_VARS = input.get(2).unwrap().to_string().parse().unwrap();
@@ -37,7 +37,7 @@ fn parse_line(input_string : String) -> ParsedLine {
     };
     for i in &input {
         let n : i8 = i.parse().unwrap();
-        unsafe{assert!(n.abs() as u8 <= N_VARS,"More variables than specified!");}
+        unsafe{assert!(n.abs() as usize <= N_VARS,"More variables than specified!");}
     }
     ParsedLine::F(formula.iter().map(|x| x.parse().unwrap()).collect())
 }

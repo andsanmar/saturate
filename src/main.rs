@@ -21,5 +21,6 @@ fn main() {
     println!("{}", contents);
     
     let to_solve : structures::CNF = parser::get_formulas(contents);
-    println!("{:?}", solver::solve(to_solve));
+    //println!("{:?}", solver::brute_force::solve(to_solve));
+    println!("{:?}", solver::dpll::solve(to_solve));
 }
