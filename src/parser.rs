@@ -39,7 +39,10 @@ fn parse_line(input_string : String) -> ParsedLine {
         let n : i8 = i.parse().unwrap();
         unsafe{assert!(n.abs() as usize <= N_VARS,"More variables than specified!");}
     }
-    ParsedLine::F(formula.iter().map(|x| x.parse().unwrap()).collect())
+    ParsedLine::F(formula.iter().map(|x| {
+        let y : isize = x.parse().unwrap();
+        (y.abs() as usize - 1, y > 0)
+    }).collect())
 }
 
 
@@ -48,7 +51,7 @@ fn main() {
     io::stdin().read_to_string(&mut buffer).unwrap();
     for i in get_formulas(buffer).0 {
         for j in i {
-            print!("{} ", j);
+            print!("{:?} ", j);
         }
         println!("");
     }

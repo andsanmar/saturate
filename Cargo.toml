@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Andrés Sánchez <andres.sanchez@imdea.org>"]
 edition = "2018"
 
+[profile.dev]
+opt-level = 3
+
 [dependencies]
 
 [build-dependencies]

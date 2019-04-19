@@ -22,5 +22,14 @@ fn main() {
     
     let to_solve : structures::CNF = parser::get_formulas(contents);
     //println!("{:?}", solver::brute_force::solve(to_solve));
-    println!("{:?}", solver::dpll::solve(to_solve));
+    match solver::dpll::solve(to_solve) {
+        None => println!("UNSAT"),
+        Some(x) => {
+            for (i, elem) in x.iter().enumerate(){
+                print!("{}{} ", if *elem {""} else {"-"}, i+1);
+            }
+            println!();
+        }
+    }
+    //println!("{:?}", solver::dpll::solve(to_solve));
 }

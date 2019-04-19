@@ -21,7 +21,7 @@ fn satisfy(forms : &CNF, assignments : &Assignation) -> bool {
 
 fn check(formula : Clause, assignments : &Assignation) -> bool {
     formula.iter().any(|x| {
-        if *x > 0 { !*assignments.get(*x as usize - 1).unwrap()}
-        else {*assignments.get((-*x as usize) - 1).unwrap()}   
+        let y = assignments[x.0];
+        x.1 == y
     })
 }
