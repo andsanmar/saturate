@@ -2,7 +2,7 @@ use crate::structures::*;
 
 // TODO: Use data structure for fast search
 
-pub fn solve(forms : CNF) -> Option<Assignation> {
+pub fn solve(forms : &CNF) -> Option<Assignation> {
     let mut ass : Assignation = Vec::new(); // TODO
         loop {
             if can_continue_cnf(&forms, &ass){

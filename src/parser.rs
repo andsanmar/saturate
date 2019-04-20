@@ -1,5 +1,3 @@
-use std::io::{self, Read};
-
 use crate::structures::*;
 
 // type CnfDef = (u8, usize);
@@ -43,16 +41,4 @@ fn parse_line(input_string : String) -> ParsedLine {
         let y : isize = x.parse().unwrap();
         (y.abs() as usize - 1, y > 0)
     }).collect())
-}
-
-
-fn main() {
-    let mut buffer : String = String::new();
-    io::stdin().read_to_string(&mut buffer).unwrap();
-    for i in get_formulas(buffer).0 {
-        for j in i {
-            print!("{:?} ", j);
-        }
-        println!("");
-    }
 }

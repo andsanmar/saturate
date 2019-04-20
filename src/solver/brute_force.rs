@@ -1,7 +1,7 @@
 use crate::structures::*;
 use crate::bins::*;
 
-pub fn solve(forms : CNF) -> Option<Assignation> {
+pub fn solve(forms : &CNF) -> Option<Assignation> {
     let mut ass : Option<Assignation> = Some(create(forms.1 as usize));
     loop {
         match ass {
