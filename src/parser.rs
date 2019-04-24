@@ -34,7 +34,7 @@ fn parse_line(input_string : String) -> ParsedLine {
         None => &input,
     };
     for i in &input {
-        let n : i8 = i.parse().unwrap();
+        let n : i16 = i.parse().unwrap();
         unsafe{assert!(n.abs() as usize <= N_VARS,"More variables than specified!");}
     }
     ParsedLine::F(formula.iter().map(|x| {

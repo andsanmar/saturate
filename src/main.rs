@@ -2,11 +2,9 @@ use std::io::{self, Read};
 use std::env;
 use std::fs::File;
 
-extern crate sat_solver;
-
-use sat_solver::parser;
-use sat_solver::solver;
-use sat_solver::structures;
+use saturate::parser;
+use saturate::solver;
+use saturate::structures::*;
 
 fn main() {
     let mut contents : String = String::new();
@@ -20,7 +18,7 @@ fn main() {
 
     //println!("{}", contents);
     
-    let to_solve : structures::CNF = parser::get_formulas(contents);
+    let to_solve : CNF = parser::get_formulas(contents);
     //println!("{:?}", solver::brute_force::solve(to_solve));
     match solver::cdcl::solve(&to_solve) {
         None => println!("UNSAT"),
@@ -38,7 +36,7 @@ fn main() {
     }
 }
 
-fn check_solution(forms : &structures::CNF, sol : &structures::Assignation) -> bool{
+fn check_solution(forms : &CNF, sol : &Assignation) -> bool{
     forms.0.iter().all(|clause| {
         if clause.is_empty() {true}
         else {clause.iter().any(|index| index.1 == sol[index.0])}

@@ -1,5 +1,5 @@
 [package]
-name = "sat_solver"
+name = "saturate"
 version = "0.1.0"
 authors = ["Andrés Sánchez <andres.sanchez@imdea.org>"]
 edition = "2018"
@@ -8,9 +8,15 @@ edition = "2018"
 opt-level = 3
 
 [dependencies]
+criterion = "*"
 
 [build-dependencies]
 
 [[bin]]
-name = "sat_solver"
+name = "saturate"
 path = "src/main.rs"
+
+[[bench]]
+name = "sat_benchmarks"
+path = "src/benchmark.rs"
+harness = false
