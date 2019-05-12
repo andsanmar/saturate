@@ -100,40 +100,25 @@ fn assign_next_and_propagate (forms : &mut CdclCNF, ass : &mut CdclVec, step : &
                           return AssignationResult::Conflict(*clause_index)
                       }
                   }
-                  return unit_propagation(forms, ass, step) },
+                  return unit_propagation(forms, ass, (index, next), step) },
         _ => ()
     }}
     AssignationResult::Ok
 }
 
 // Returns if there's a conflict when propagating
-fn unit_propagation (forms : &mut CdclCNF, ass : &mut CdclVec, step : &mut Vec<usize>) -> AssignationResult {
-    let mut propagated : Option<(usize, bool)> = None;
-    for (clause, solved_clause) in forms.iter_mut().filter(|(_, solved_clause)| !solved_clause) {
-        //let clause = forms[*clause_index].0;
-        let (mut not_assigned, mut assigned) : (Clause, Clause) = (Vec::new(), Vec::new());
-        for var in *clause {
-            match ass[var.0].1 {
-                None => not_assigned.push(*var),
-                Some(z) => { if var.1 == z
-                            // Check satisfiability of every element
-                             { assigned.push(*var) }}
-            }};
-        if assigned.is_empty() && not_assigned.len() == 1 {
-            // Unit propagation
-            let (i, value) = not_assigned.first().unwrap();
-            ass[*i].1 = Some(*value);
-            step.push(*i);
-            *solved_clause = true;
-            for clause_index in if *value {&(ass[*i].0).1} else {&(ass[*i].0).0} { // Check if makes some clause false, if so, return false
-                if conflict_on_clause(forms, *clause_index, ass) { return AssignationResult::Conflict(*clause_index) }
+fn unit_propagation (forms : &mut CdclCNF, ass : &mut CdclVec, (last_index, last_assignment) : (usize, bool), step : &mut Vec<usize>) -> AssignationResult {
+    let clauses_to_solve : &Vec<usize> = if last_assignment {&(ass[last_index].0).1} else {&(ass[last_index].0).0};
+    match to_propagate(forms, ass, clauses_to_solve) {
+        Some((i,value, clause_index)) => {
+            ass[i].1 = Some(value);
+            step.push(i);
+            forms[clause_index].1 = true;
+            for clause_index in if value {&(ass[i].0).1} else {&(ass[i].0).0} { // Check if makes some clause false, if so, return false
+                if conflict_on_clause(forms, *clause_index, ass) {
+                    return AssignationResult::Conflict(*clause_index) }
             }
-            propagated = Some((*i, *value));
-            break; // When propagating, we terminate
-        }
-    }
-    match propagated {
-        Some(_last_assignment) => { unit_propagation(forms, ass, step) } // If adding a new variable, we do again the unit_propagation
+            unit_propagation(forms, ass, (i, value), step) } // If adding a new variable, we do again the unit_propagation
         None => { AssignationResult::Ok }
     }
 }
@@ -146,4 +131,32 @@ fn get_result (vec : &CdclVec) -> Option<Assignation> {
             Some(i) => result.push(i)
         }}
     Some(result)
+}
+
+fn get_propagation (clause : &Clause, ass : &CdclVec) -> Option<(usize, bool)> {
+    let (mut not_assigned, mut assigned) : (Clause, Clause) = (Vec::new(), Vec::new());
+    for var in clause {
+        match ass[var.0].1 {
+            None => not_assigned.push(*var),
+            Some(z) => { if var.1 == z
+                         // Check satisfiability of every element
+                         { assigned.push(*var) }}
+        }};
+    if assigned.is_empty() && not_assigned.len() == 1 {
+        Some(*not_assigned.first().unwrap())
+    } else { None }
+}
+
+fn to_propagate ( forms : &CdclCNF, ass : &CdclVec, clauses_to_solve : &Vec<usize> ) -> Option<(usize, bool, usize)> {
+    for clause_index in clauses_to_solve.iter().filter(|index| !forms[**index].1) {
+        let clause = forms[*clause_index].0;
+        let gv = get_propagation(clause, ass);
+        match gv {
+            Some((i, value)) => {
+                return Some((i, value, *clause_index));
+            }
+            None => ()
+        }
+    }
+    None
 }
