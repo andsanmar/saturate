@@ -8,8 +8,8 @@ type CdclVec = Vec<((Vec<usize>, Vec<usize>), Option<bool>)>;
 // Vector of pairs: clause and status (solved)
 type CdclCNF<'a> = Vec<(&'a Clause, bool)>;
 
-// The index of the variables of the assignments changed
-type StepHistory = Vec<usize>;
+// The index of the variables of the assignments changed and same with clauses solved
+type StepHistory = (Vec<usize>, Vec<usize>);
 
 enum AssignationResult {
     Conflict(usize), // Index of clause
@@ -40,9 +40,8 @@ pub fn solve(forms : &CNF) -> Option<Assignation> {
     None
 }
 
-// TODO: acumulate steps?
-fn solve_by_cdcl(forms : &mut CdclCNF, ass : &mut CdclVec, next : bool) -> CdclResult {
-    let mut step : StepHistory = Vec::new(); // contains the index of the variables that've been modified
+fn solve_by_cdcl (forms : &mut CdclCNF, ass : &mut CdclVec, next : bool) -> CdclResult {
+    let mut step : StepHistory = (Vec::new(), Vec::new()); // contains the index of the variables that've been modified
     match assign_next_and_propagate(forms, ass, &mut step, next) {  // rollback the step if there's a conflict
         AssignationResult::Conflict(index) => {
             rollback(&step, ass, forms);
@@ -57,25 +56,21 @@ fn solve_by_cdcl(forms : &mut CdclCNF, ass : &mut CdclVec, next : bool) -> CdclR
                     CdclResult::Solved(x) => return CdclResult::Solved(x),
                     CdclResult::Conflict(_index) => () // TODO process conflict
                 }
-            }
-        }
+            }}
     }
-    // We should never get here!
-    // loop {}
     rollback(&step, ass, forms);
     CdclResult::Conflict(0)
 }
 
-fn rollback(step : &StepHistory, ass : &mut CdclVec, forms : &mut CdclCNF) {
-    for e in step {
-        let prev_value = ass[*e].1.unwrap();
-        ass[*e].1 = None;
-        for x in if prev_value {&(ass[*e].0).1} else {&(ass[*e].0).0} { forms[*x].1 = false; }
-    };
+fn rollback((step_a, step_c) : &StepHistory, ass : &mut CdclVec, forms : &mut CdclCNF) {
+    for assignment in step_a {
+        ass[*assignment].1 = None;}
+    for clause in step_c {
+        forms[*clause].1 = false }
 }
 
 // Returns true if there's a conflict, updates the clause status if not
-fn conflict_on_clause (forms : &mut CdclCNF, clause_index : usize, ass : &CdclVec) -> bool {
+fn conflict_on_clause (forms : &mut CdclCNF, clause_index : usize, ass : &CdclVec, step : &mut StepHistory) -> bool {
     let (clause, solved) = forms[clause_index];
     if solved { return false }
     if !clause.is_empty() {
@@ -85,6 +80,7 @@ fn conflict_on_clause (forms : &mut CdclCNF, clause_index : usize, ass : &CdclVe
                 Some(expected_value) => if *value == expected_value { return false }
             }}}
     forms[clause_index].1 = true;
+    step.1.push(clause_index);
     true
 }
 
@@ -92,11 +88,11 @@ fn conflict_on_clause (forms : &mut CdclCNF, clause_index : usize, ass : &CdclVe
 fn assign_next_and_propagate (forms : &mut CdclCNF, ass : &mut CdclVec, step : &mut StepHistory, next : bool) -> AssignationResult {
     for (index, x) in ass.iter().enumerate() { match x.1 {
         None => { ass[index].1 = Some(next);
-                  step.push(index);
+                  step.0.push(index);
                   // Inspect the contrary (if we make it true inspect the ones where the assignment should be false)
                   for clause_index in if next {&(ass[index].0).1} else {&(ass[index].0).0} {
                       // Check if makes some clause false, if so, return clause index
-                      if conflict_on_clause(forms, *clause_index, ass) {
+                      if conflict_on_clause(forms, *clause_index, ass, step) {
                           return AssignationResult::Conflict(*clause_index)
                       }
                   }
@@ -107,15 +103,16 @@ fn assign_next_and_propagate (forms : &mut CdclCNF, ass : &mut CdclVec, step : &
 }
 
 // Returns if there's a conflict when propagating
-fn unit_propagation (forms : &mut CdclCNF, ass : &mut CdclVec, (last_index, last_assignment) : (usize, bool), step : &mut Vec<usize>) -> AssignationResult {
+fn unit_propagation (forms : &mut CdclCNF, ass : &mut CdclVec, (last_index, last_assignment) : (usize, bool), step : &mut StepHistory) -> AssignationResult {
     let clauses_to_solve : &Vec<usize> = if last_assignment {&(ass[last_index].0).1} else {&(ass[last_index].0).0};
     match to_propagate(forms, ass, clauses_to_solve) {
         Some((i,value, clause_index)) => {
             ass[i].1 = Some(value);
-            step.push(i);
+            step.0.push(i);
             forms[clause_index].1 = true;
+            step.1.push(clause_index);
             for clause_index in if value {&(ass[i].0).1} else {&(ass[i].0).0} { // Check if makes some clause false, if so, return false
-                if conflict_on_clause(forms, *clause_index, ass) {
+                if conflict_on_clause(forms, *clause_index, ass, step) {
                     return AssignationResult::Conflict(*clause_index) }
             }
             unit_propagation(forms, ass, (i, value), step) } // If adding a new variable, we do again the unit_propagation
