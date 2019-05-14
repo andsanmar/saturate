@@ -5,7 +5,7 @@ use crate::structures::*;
 // 2nd component: value assigned
 type CdclVec = Vec<((Vec<usize>, Vec<usize>), Option<bool>)>;
 
-// Vector of pairs: clause, status (solved) and remaining free variables
+// Vector of pairs: clause and status (solved)
 type CdclCNF<'a> = Vec<(&'a Clause, bool)>;
 
 // The index of the variables of the assignments changed and same with clauses solved
@@ -13,13 +13,11 @@ type StepHistory = (Vec<usize>, Vec<usize>);
 
 enum AssignationResult {
     Conflict(usize), // Index of clause
-    Ok
-}
+    Ok }
 
 enum CdclResult {
     Conflict(usize), // Index of clause
-    Solved(Assignation)
-}
+    Solved(Assignation) }
 
 // Create the data structures and call the algorithm to solve
 pub fn solve(forms : &CNF) -> Option<Assignation> {
@@ -88,17 +86,17 @@ fn conflict_on_clause (forms : &mut CdclCNF, clause_index : &usize, ass : &CdclV
 
 // Returns if there's a conflict when assigning
 fn assign_next_and_propagate (forms : &mut CdclCNF, ass : &mut CdclVec, step : &mut StepHistory, next : bool) -> AssignationResult {
-    for (index, x) in ass.iter().enumerate() { match x.1 {
-        None => { ass[index].1 = Some(next);
-                  step.0.push(index);
-                  // Inspect the contrary (if we make it true inspect the ones where the assignment should be false)
-                  match (if next {&(ass[index].0).1} else {&(ass[index].0).0}).iter().find(|clause_index| conflict_on_clause(forms, clause_index, ass, step)) {
-                      // Check if makes some clause false, if so, return clause index
-                      Some(clause_index) => return AssignationResult::Conflict(*clause_index),
-                      None => () }
-                  return unit_propagation(forms, ass, (index, next), step) },
+    match ass.iter().enumerate().find(|(_, x)| x.1 == None) {
+        Some((index, _)) => { ass[index].1 = Some(next);
+                              step.0.push(index);
+                              // Inspect the contrary (if we make it true inspect the ones where the assignment should be false)
+                              match (if next {&(ass[index].0).1} else {&(ass[index].0).0}).iter().find(|clause_index| conflict_on_clause(forms, clause_index, ass, step)) {
+                                  // Check if makes some clause false, if so, return clause index
+                                  Some(clause_index) => return AssignationResult::Conflict(*clause_index),
+                                  None => () }
+                              return unit_propagation(forms, ass, (index, next), step) },
         _ => ()
-    }}
+    }
     AssignationResult::Ok
 }
 
