@@ -1,7 +1,8 @@
 use crate::structures::*;
 use std::sync::{Arc, RwLock};
+use std::sync::mpsc;
 
-// TODO global data structure with all the inf of the execution!
+// TODO global data structure with all the info of the execution!
 
 // Vector of asignations
 // 1st component: index the clauses it forms part of (1 if true, 2 false)
@@ -106,20 +107,29 @@ fn assign_next_and_propagate (forms : &Arc<RwLock<CdclCNF>>, ass : &mut CdclVec,
 
 // Returns if there's a conflict when propagating
 fn unit_propagation (forms : &Arc<RwLock<CdclCNF>>, ass : &mut CdclVec, (last_index, last_assignment) : (usize, bool), step : &mut StepHistory) -> AssignationResult {
-    let clauses_to_solve : &Vec<usize> = if last_assignment {&(ass[last_index].0).1} else {&(ass[last_index].0).0};
-    match to_propagate(forms, ass, clauses_to_solve) {
-        Some((i, value, clause_index)) => {
-            ass[i].1 = Some(value);
-            step.0.push(i);
-            forms.write().unwrap()[clause_index].1 = true;
-            step.1.push(clause_index);
-            // Check if makes some clause false, if so, return false
-            match (if value {&(ass[i].0).1} else {&(ass[i].0).0}).iter().find(|clause_index| { conflict_on_clause(forms, clause_index, ass, step)}) {
-                Some(clause_index) => {return AssignationResult::Conflict(*clause_index)}
-                None => ()
-            }
-            unit_propagation(forms, ass, (i, value), step) } // If adding a new variable, we do again the unit_propagation
-        None => { AssignationResult::Ok }
+    let (sender, receiver) = mpsc::channel();
+    let ass_ref : Arc<RwLock<&mut CdclVec>> = Arc::new(RwLock::new(ass));
+    {
+        let t = &ass_ref.read().unwrap()[last_index].0;
+        let clauses_to_solve : &Vec<usize> = if last_assignment {&(t).1} else {&(t).0};
+        to_propagate(forms, &ass_ref, clauses_to_solve, sender);
+    };
+    let mut c = None;
+    for (i, value, clause_index) in receiver {
+        c = Some((i,value));
+        ass[i].1 = Some(value); // TODO: detect conflict at this step instead (by lokking if it's currently assigned with the contrary value), this way there's no need to call "conflict_con_clause"
+        step.0.push(i);
+        forms.write().unwrap()[clause_index].1 = true;
+        step.1.push(clause_index);
+        // Check if makes some clause false, if so, return false
+        match (if value {&(ass[i].0).1} else {&(ass[i].0).0}).iter().find(|clause_index| { conflict_on_clause(forms, clause_index, ass, step)}) {
+            Some(clause_index) => {return AssignationResult::Conflict(*clause_index)}
+            None => ()
+        }
+    } // If adding a new variable, we do again the unit_propagation
+    match c {
+        Some((i,value)) => unit_propagation(forms, ass, (i, value), step),
+        None => AssignationResult::Ok
     }
 }
 
@@ -149,10 +159,9 @@ fn get_propagation (clause : &Clause, ass : &CdclVec) -> Option<(usize, bool)> {
 }
 
 // Returns the variable assignationof the clause that must be solved
-fn to_propagate (forms : &Arc<RwLock<CdclCNF>>, ass : &CdclVec, clauses_to_solve : &Vec<usize> ) -> Option<(usize, bool, usize)> {
+fn to_propagate (forms : &Arc<RwLock<CdclCNF>>, ass : &Arc<RwLock<&mut CdclVec>>, clauses_to_solve : &Vec<usize>, channel : mpsc::Sender<(usize, bool, usize)> ) {
     for clause_index in clauses_to_solve.iter().filter(|index| !forms.read().unwrap()[**index].1) {
-        match get_propagation(forms.read().unwrap()[*clause_index].0, ass) {
-            Some((i, value)) => { return Some((i, value, *clause_index)); }
+        match get_propagation(forms.read().unwrap()[*clause_index].0, &ass.read().unwrap()) {
+            Some((i, value)) => { channel.send((i, value, *clause_index)).unwrap(); return; }
             None => () }}
-    None
 }
