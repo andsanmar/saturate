@@ -117,8 +117,7 @@ fn unit_propagation (forms : &Arc<RwLock<CdclCNF>>, ass : &mut CdclVec, (last_in
         for clause_index in if last_assignment {&t.1} else {&t.0} {
             let (clause, valid) = forms.read().unwrap()[*clause_index];
             if !valid {
-                s
-                    ender_clauses.send((clause, *clause_index, &ass)).unwrap();
+                sender_clauses.send((clause, *clause_index, &ass)).unwrap();
             }
         }
         drop(sender_clauses);
