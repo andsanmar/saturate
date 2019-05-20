@@ -1,7 +1,6 @@
 use crate::structures::*;
 use std::sync::{Arc, RwLock};
 use std::sync::mpsc;
-// use std::thread;
 
 // TODO global data structure with all the info of the execution!
 
@@ -111,20 +110,21 @@ fn unit_propagation (forms : &Arc<RwLock<CdclCNF>>, ass : &mut CdclVec, (last_in
     // The process to_propagate tells by this channel the new vars to change
     let (sender_vars, receiver_vars) = mpsc::channel();
     // The process unit_propagation tells by this channel the new clauses to inspect
-    let (sender_clauses, receiver_clauses) : (mpsc::Sender<usize>, mpsc::Receiver<usize>) = mpsc::channel();
-    let ass_ref : Arc<RwLock<&mut CdclVec>> = Arc::new(RwLock::new(ass));
+    let (sender_clauses, receiver_clauses) : (mpsc::Sender<(&Clause, usize, &CdclVec)>, mpsc::Receiver<(&Clause, usize, &CdclVec)>) = mpsc::channel();
 
-    let ass_dr = Arc::clone(&ass_ref);
-    let forms_dr = Arc::clone(forms);
-    // thread::spawn(||
     {
-        let t = &ass_ref.read().unwrap()[last_index].0;
+        let t = &ass[last_index].0;
         for clause_index in if last_assignment {&t.1} else {&t.0} {
-            sender_clauses.send(*clause_index).unwrap();
+            let (clause, valid) = forms.read().unwrap()[*clause_index];
+            if !valid {
+                s
+                    ender_clauses.send((clause, *clause_index, &ass)).unwrap();
+            }
         }
-        drop(sender_clauses); // TODO other thread with to_propagate only
-        to_propagate(forms_dr, ass_dr, sender_vars, receiver_clauses);
-    };
+        drop(sender_clauses);
+    }
+
+    to_propagate(sender_vars, receiver_clauses); // TODO other thread with to_propagate only
 
     let mut c = None;
     for (i, value, clause_index) in receiver_vars {
@@ -175,13 +175,10 @@ fn get_propagation (clause : &Clause, ass : &CdclVec) -> Option<(usize, bool)> {
 }
 
 // Returns the variable assignationof the clause that must be solved
-fn to_propagate (forms : Arc<RwLock<CdclCNF>>, ass : Arc<RwLock<&mut CdclVec>>, send_vars : mpsc::Sender<(usize, bool, usize)>, receive_clauses : mpsc::Receiver<(usize)> ) {
-    //let clauses_to_solve : Vec<usize> = receive_clauses.recv().unwrap();
-    //for clause_index in clauses_to_solve.iter().filter(|index| !forms.read().unwrap()[**index].1) {
-    for clause_index in receive_clauses {
-        if !forms.read().unwrap()[clause_index].1 {
-            match get_propagation(forms.read().unwrap()[clause_index].0, &ass.read().unwrap()) {
-                Some((i, value)) => { send_vars.send((i, value, clause_index)).unwrap() }
-                None => () }}
-    }
+fn to_propagate (send_vars : mpsc::Sender<(usize, bool, usize)>, receive_clauses : mpsc::Receiver<(&Clause, usize, &CdclVec)> ) {
+    for (clause, clause_index, ass) in receive_clauses {
+        match get_propagation(clause, ass) {
+            Some((i, value)) => { send_vars.send((i, value, clause_index)).unwrap() }
+            None => () }}
 }
+
