@@ -15,11 +15,11 @@ pub fn solve(forms : &CNF) -> Option<Assignation> {
 fn satisfy(forms : &CNF, assignments : &Assignation) -> bool {
     forms.0.iter().all(|x| {
         if x.is_empty() { true }
-        else {check(x.to_vec(), &assignments)}
+        else {check(x, &assignments)}
     })
 }
 
-fn check(formula : Clause, assignments : &Assignation) -> bool {
+fn check(formula : &Clause, assignments : &Assignation) -> bool {
     formula.iter().any(|x| {
         let y = assignments[x.0];
         x.1 == y
